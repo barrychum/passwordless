@@ -3,7 +3,7 @@ attrs==21.4.0
 black==21.12b0
 cattrs==1.10.0
 cbor2==5.4.2
-cffi==1.15.0
+cffi==1.16.0
 click==8.0.3
 cryptography==36.0.1
 Flask==2.0.2

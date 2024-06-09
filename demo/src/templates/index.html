@@ -1,53 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="static/simplewebauthn-browser.4.1.0.umd.min.js"></script>
-    <link rel="stylesheet" href="static/style.css" />
-    <title>Going Passwordless with py_webauthn (Sample RP)</title>
-  </head>
-  <body>
+
+<head>
+    <meta charset="UTF-8">
+    <title>User Registration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='simplewebauthnbrowser.10.0.0.umd.min.js') }}"></script>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+</head>
+
+<body>
+    <header class="header">
+        <h1>WebAuthn Passwordless Authentication Demo</h1>
+    </header>
+
     <div class="container">
-      <header>
-        <h1>Going Passwordless with py_webauthn (Sample Code)</h1>
-        <div class="form-container">
-          <h2>Username:</h2>
-          <input
-            type="text"
-            name="username"
-            id="username"
-            value="{{ username }}"
-            disabled
-          />
-          <button id="btnRegister">Register</button>
-          <button id="btnAuthenticate">Authenticate</button>
-        </div>
-      </header>
-      <main>
-        <h2></h2>
-        <details>
-          <summary>Debug Info</summary>
-          <!-- Registration -->
-          <section>
-            <h3>Registration</h3>
-            <p>Status: <span id="statusRegister"></span></p>
-            <h4>Raw Output:</h4>
-            <textarea id="dbgRegister" spellcheck="false"></textarea>
-          </section>
-          <!-- Authentication -->
-          <section>
-            <h3>Authentication</h3>
-            <p>Status: <span id="statusAuthenticate"></span></p>
-            <h4>Raw Output:</h4>
-            <textarea id="dbgAuthenticate" spellcheck="false"></textarea>
-          </section>
-        </details>
-        <div class="debug-container"></div>
-      </main>
+        <main class="main-content">
+            <section class="intro">
+                <h2>Authentication Details</h2>
+                <p>rp_name: {{rp_name}}</p>
+                <p>rp_id: {{rp_id}}</p>
+                <p>origin: {{origin}}</p>
+            </section>
+
+            <section class="form-container">
+                <label for="username">Enter your username:</label>
+                <input type="text" name="username" id="username" value="{{ username }}" />
+                <div class="form-buttons">
+                    <button type="button" onclick="registerUser()">Register</button>
+                    <button type="button" onclick="authenticateUser()">Authenticate</button>
+                </div>
+            </section>
+        </main>
+
+        <aside class="status-container">
+            <p>Status:</p>
+            <span id="status"></span>
+        </aside>
     </div>
 
-    <script src="static/script.js"></script>
-  </body>
+    <section class="collapsible-sections">
+        <div class="section" id="section1">
+            <a class="collapse-trigger" href="#" onclick="toggleSection('reg-options'); return false;">
+                Registration options</a>
+            <div class="content" id="reg-options"></div>
+        </div>
+        <div class="section" id="section2">
+            <a class="collapse-trigger" href="#" onclick="toggleSection('reg-result'); return false;">
+                Registration result</a>
+            <div class="content" id="reg-result"></div>
+        </div>
+        <div class="section" id="section3">
+            <a class="collapse-trigger" href="#" onclick="toggleSection('reg-ver-result'); return false;">
+                Registration verification result</a>
+            <div class="content" id="reg-ver-result"></div>
+        </div>
+        <div class="section" id="section4">
+            <a class="collapse-trigger" href="#" onclick="toggleSection('auth-options'); return false;">
+                Authentication options</a>
+            <div class="content" id="auth-options"></div>
+        </div>
+        <div class="section" id="section5">
+            <a class="collapse-trigger" href="#" onclick="toggleSection('auth-result'); return false;">
+                Authentication result</a>
+            <div class="content" id="auth-result"></div>
+        </div>
+        <div class="section" id="section6">
+            <a class="collapse-trigger" href="#" onclick="toggleSection('auth-ver-result'); return false;">
+                Authentication verification result</a>
+            <div class="content" id="auth-ver-result"></div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p>&copy; 2024 WebAuthn Demo. All rights reserved.</p>
+    </footer>
+
+    <script>
+        function toggleSection(id) {
+            const element = document.getElementById(id);
+            if (element.style.display === "none" || element.style.display === "") {
+                element.style.display = "block";
+            } else {
+                element.style.display = "none";
+            }
+        }
+
+        // Initialize all sections as collapsed
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.content').forEach(function (content) {
+                content.style.display = 'none';
+            });
+            setStatusMessage("Please enter username and click one of the buttons");
+        });
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
 </html>

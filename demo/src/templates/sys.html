@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title></title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="">
+</head>
+
+<body>
+
+    <form method="POST">
+        <label for="rp_name">rp_name:</label>
+        <input type="text" id="rp_name" name="rp_name" value="{{ rp_name }}">
+        For information only<br>
+
+        <label for="rp_id">rp_id:</label>
+        <input type="text" id="rp_id" name="rp_id" value="{{ rp_id }}">
+        Must match URL to register<br>
+
+        <label for="origin">origin:</label>
+        <input type="text" id="origin" name="origin" value="{{ origin }}">
+        Must match rp_id to verify<br>
+
+        <input type="submit" value="Submit">
+    </form>
+
+<!--
+    <ul style="font-size: small;">
+        {% for username, user_account in user_data.items() %}
+        <li>Username: {{ username }}</li>
+        <ul>
+            {% for credential in user_account.credentials %}
+            <li>Credential ID: {{ credential.id.hex() }}</li> 
+            <li>Public Key: {{ credential.public_key.hex() }}</li> 
+            <li>Sign Count: {{ credential.sign_count }}</li>
+            {% if credential.transports %}
+            <li>Transports: {{ credential.transports }}</li> 
+            {% endif %}<br>
+            {% endfor %}
+        </ul>
+        {% endfor %}
+    </ul>
+    -->
+
+    <ul>
+        {% for username, user_account in user_data.items() %}
+          <li>Username: {{ username }}</li>
+          <ul>
+            {% for credential in user_account.credentials %}
+              <li>
+                Credential ID: {{ credential.id.hex() }}<br>
+                Public Key: {{ credential.public_key.hex() }}<br>
+                Sign Count: {{ credential.sign_count }}
+              </li>
+              {% if credential.transports %}
+              <li style="text-decoration: underline;">Transports: {{ credential.transports }}</li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        {% endfor %}
+        </ul>
+
+
+</body>
+
+</html>

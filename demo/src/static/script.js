@@ -1,159 +1,175 @@
+/////////////////////////////////////
+// extract functions from simpleWebAuthn
+/////////////////////////////////////
 const { startRegistration, startAuthentication } = SimpleWebAuthnBrowser;
 
-// Registration
-const statusRegister = document.getElementById("statusRegister");
-const dbgRegister = document.getElementById("dbgRegister");
-
-// Authentication
-const statusAuthenticate = document.getElementById("statusAuthenticate");
-const dbgAuthenticate = document.getElementById("dbgAuthenticate");
-
-/**
- * Helper methods
- */
-
-function printToDebug(elemDebug, title, output) {
-  if (elemDebug.innerHTML !== "") {
-    elemDebug.innerHTML += "\n";
-  }
-  elemDebug.innerHTML += `// ${title}\n`;
-  elemDebug.innerHTML += `${output}\n`;
+/////////////////////////////////////
+// helper functions for html display
+/////////////////////////////////////
+function timestampMessage(message) {
+    const now = Date.now();
+    const formattedTime = new Date(now).toLocaleTimeString([], { hour12: false });
+    const formattedMilliseconds = (new Date(now) % 1000).toString().padStart(3, '0');
+    return `${formattedTime}.${formattedMilliseconds}: ${message}`;
 }
 
-function resetDebug(elemDebug) {
-  elemDebug.innerHTML = "";
+function setStatusMessage(message) {
+    const statusDiv = document.getElementById('status');
+    statusDiv.innerText = message + `\n`;
 }
 
-function printToStatus(elemStatus, output) {
-  elemStatus.innerHTML = output;
+function appendStatusMessage(message) {
+    const statusDiv = document.getElementById('status');
+    statusDiv.innerText += message + `\n`;
 }
 
-function resetStatus(elemStatus) {
-  elemStatus.innerHTML = "";
+function setInnerHTMLById(Id,msg) {
+    const elementObj = document.getElementById(Id);
+    elementObj.innerHTML = msg;
 }
 
-function getPassStatus() {
-  return "✅";
-}
+async function registerUser() {
+    const username = document.getElementById('username').value;
 
-function getFailureStatus(message) {
-  return `🛑 (Reason: ${message})`;
-}
+    setInnerHTMLById('reg-options','');
+    setInnerHTMLById('reg-result','');
+    setInnerHTMLById('reg-ver-result','');
+    setInnerHTMLById('auth-options','');
+    setInnerHTMLById('auth-result','');
+    setInnerHTMLById('auth-ver-result','');
 
-/**
- * Register Button
- */
-document
-  .getElementById("btnRegister")
-  .addEventListener("click", async () => {
-    resetStatus(statusRegister);
-    resetDebug(dbgRegister);
+    if (!username) {
+        setStatusMessage('username cannot be empty');
+        return;
+    }
+    const formData = new FormData(); // Create FormData object
+    formData.append("username", username);
+    const resp = await fetch("/register", {
+        method: "POST",
+        body: formData
+    });
 
-    // Get options
-    const resp = await fetch("/generate-registration-options");
+    // generate options using python webAuthn module
+    // options is used by simpleWebAuthn browser for client passkey generation
+    setStatusMessage(timestampMessage('sent a POST request with username'));
     const opts = await resp.json();
-    printToDebug(
-      dbgRegister,
-      "Registration Options",
-      JSON.stringify(opts, null, 2)
-    );
+    appendStatusMessage(timestampMessage('received generated options from server'));
 
-    // Start WebAuthn Registration
+    setInnerHTMLById('reg-options',`<pre>${JSON.stringify(opts, null, 2)}</pre>`);
+
+    // Start passkey creation using simplewebauthn@browser
     let regResp;
     try {
-      regResp = await startRegistration(opts);
-      printToDebug(
-        dbgRegister,
-        "Registration Response",
-        JSON.stringify(regResp, null, 2)
-      );
+        appendStatusMessage(timestampMessage("calling startRegistration on client side"));
+        regResp = await startRegistration(opts);
+        appendStatusMessage(timestampMessage("startRegistration completed on client side"));
+        setInnerHTMLById('reg-result',`<pre>${JSON.stringify(regResp, null, 2)}</pre>`);
     } catch (err) {
-      printToStatus(statusRegister, getFailureStatus(err));
-      throw new Error(err);
+        appendStatusMessage(timestampMessage(err));
+        throw new Error(err);
     }
 
-    // Send response to server
-    const verificationResp = await fetch(
-      "/verify-registration-response",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(regResp),
-      }
-    );
+    // create a new json to pass to webauthn for verification
+    // the username is added to the payload
+    // the payload will be splitted in on the server
+    const payload = {
+        username: username,
+        original_json: JSON.stringify(regResp)
+    };
 
+    appendStatusMessage(timestampMessage("calling verify_registration_response"));
+    // use verify_authentication_response function in webauthn to verify
+    // public key is correct
+    // use webauthn.helpers.structs to find the public key
+    const verificationResp = await fetch(
+        "/verify-registration",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        }
+    );
+    appendStatusMessage(timestampMessage('received verify_registration_response'));
     // Report validation response
     const verificationRespJSON = await verificationResp.json();
     const { verified, msg } = verificationRespJSON;
+
+    setInnerHTMLById('reg-ver-result',`<pre>${JSON.stringify(verificationRespJSON, null, 2)}</pre>`);
     if (verified) {
-      printToStatus(statusRegister, getPassStatus());
+        appendStatusMessage('verified sucessfully. User added server side');
     } else {
-      printToStatus(statusRegister, getFailureStatus(msg));
+        appendStatusMessage(msg);
     }
-    printToDebug(
-      dbgRegister,
-      "Verification Response",
-      JSON.stringify(verificationRespJSON, null, 2)
-    );
-  });
+}
 
-/**
- * Authenticate Button
- */
-document
-  .getElementById("btnAuthenticate")
-  .addEventListener("click", async () => {
-    resetStatus(statusAuthenticate);
-    resetDebug(dbgAuthenticate);
+async function authenticateUser() {
+    const username = document.getElementById('username').value; // Assuming you have an input field with ID 'username'
 
-    // Get options
-    const resp = await fetch("/generate-authentication-options");
+    setInnerHTMLById('auth-options','');
+    setInnerHTMLById('auth-result','');
+    setInnerHTMLById('auth-ver-result','');
+
+    if (!username) {
+        setStatusMessage('username cannot be empty');
+        return;
+    }
+    const formData = new FormData(); // Create FormData object
+    formData.append("username", username);
+    const resp = await fetch("/authenticate", {
+        method: "POST",
+        body: formData
+    });
+
+    setStatusMessage(timestampMessage('sent a POST request with username'));
     const opts = await resp.json();
-    printToDebug(
-      dbgAuthenticate,
-      "Authentication Options",
-      JSON.stringify(opts, null, 2)
-    );
+    appendStatusMessage(timestampMessage('received generated options from server'));
+
+    // Display the JSON message in the auth-options div
+    setInnerHTMLById('auth-options',`<pre>${JSON.stringify(opts, null, 2)}</pre>`);
 
     // Start WebAuthn Authentication
     let authResp;
     try {
-      authResp = await startAuthentication(opts);
-      printToDebug(
-        dbgAuthenticate,
-        "Authentication Response",
-        JSON.stringify(authResp, null, 2)
-      );
+        appendStatusMessage(timestampMessage("calling startAuthentication on client side"));
+        authResp = await startAuthentication(opts);
+        appendStatusMessage(timestampMessage("startAuthentication completed on client side"));
+        setInnerHTMLById('auth-result',`<pre>${JSON.stringify(authResp, null, 2)}</pre>`);
     } catch (err) {
-      printToStatus(statusAuthenticate, getFailureStatus(err));
-      throw new Error(err);
+        appendStatusMessage(timestampMessage(err));
+        throw new Error(err);
     }
 
-    // Send response to server
-    const verificationResp = await fetch(
-      "/verify-authentication-response",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(authResp),
-      }
-    );
+    // create a new json to pass to webauthn for verification
+    // the username is added to the payload
+    // the payload will be splitted in on the server
+    const payload = {
+        username: username,
+        original_json: JSON.stringify(authResp)
+    };
 
+    appendStatusMessage(timestampMessage("calling verify_authentication_response"));
+    const verificationResp = await fetch(
+        "/verify-authentication",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        }
+    );
+    appendStatusMessage(timestampMessage('received verify_authentication_response'));
     // Report validation response
     const verificationRespJSON = await verificationResp.json();
     const { verified, msg } = verificationRespJSON;
+
+    setInnerHTMLById('auth-ver-result',`<pre>${JSON.stringify(verificationRespJSON, null, 2)}</pre>`);
+
     if (verified) {
-      printToStatus(statusAuthenticate, getPassStatus());
+        appendStatusMessage('authentication verified sucessfully.');
     } else {
-      printToStatus(statusAuthenticate, getFailureStatus(msg));
+        appendStatusMessage(msg);
     }
-    printToDebug(
-      dbgAuthenticate,
-      "Verification Response",
-      JSON.stringify(verificationRespJSON, null, 2)
-    );
-  });
+}
